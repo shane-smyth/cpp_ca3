@@ -66,7 +66,7 @@ void Board::displayAllBugs() const {
             crawler->getPosition().x,
             crawler->getPosition().y,
             crawler->getSize(),
-            dirStr.c_str(),
+            dirStr.c_str(), //https://stackoverflow.com/questions/7163069/c-string-to-enum
             crawler->isAlive() ? "Alive" : "Dead"
         );
     }
