@@ -1,6 +1,9 @@
 #include "Board.h"
+
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 
 Board::Board() {
@@ -88,4 +91,46 @@ void Board::tap() {
             crawler->move();
         }
     }
+
+    // Check for collisions
+    std::map<Position, std::vector<Crawler*>> positionMap;
+    for (Crawler* crawler : crawlers) {
+        if (crawler->isAlive()) {
+            positionMap[crawler->getPosition()].push_back(crawler);
+        }
+    }
+
+    // Resolve collisions
+    for (auto& entry : positionMap) {
+        auto& bugs = entry.second;
+        if (bugs.size() > 1) {
+            std::sort(bugs.begin(), bugs.end(), [](Crawler* a, Crawler* b) {
+                return a->getSize() > b->getSize() || (a->getSize() == b->getSize() && a->getId() < b->getId());
+            });
+            Crawler* survivor = bugs[0];
+            for (size_t i = 1; i < bugs.size(); ++i) {
+                bugs[i]->setAlive(false);
+                bugs[i]->setKillerId(survivor->getId());
+            }
+        }
+    }
 }
+
+void Board::displayLifeHistory() const {
+    for (const Crawler* crawler : crawlers) {
+        std::cout << crawler->getId() << " Crawler Path: ";
+        const auto& path = crawler->getPath();
+        bool first = true;
+        for (const auto& pos : path) {
+            std::cout << (first ? "" : ",") << "(" << pos.x << "," << pos.y << ")";
+            first = false;
+        }
+        if (!crawler->isAlive()) {
+            int killerId = crawler->getKillerId();
+            std::cout << (killerId != -1 ? " Eaten by " + std::to_string(killerId) : " Dead");
+        }
+        std::cout << std::endl;
+    }
+}
+
+const std::vector<Crawler*>& Board::getCrawlers() const { return crawlers; }
