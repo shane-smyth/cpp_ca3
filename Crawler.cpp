@@ -3,7 +3,7 @@
 
 // constructor
 Crawler::Crawler(int id, int x, int y, Direction direction, int size)
-    : id(id), position(x, y), direction(direction), size(size), alive(true) {
+    : id(id), position{x, y}, direction(direction), size(size), alive(true), killerId(-1) {
     path.push_back(position);
 }
 
@@ -60,3 +60,5 @@ void Crawler::move() {
 
 void Crawler::setAlive(bool alive) { this->alive = alive; }
 void Crawler::grow(int amount) { size += amount; }
+int Crawler::getKillerId() const { return killerId; }
+void Crawler::setKillerId(int id) { killerId = id; }

@@ -18,6 +18,10 @@ struct Position {
     bool operator==(const Position &other) const {
         return x == other.x && y == other.y;
     }
+
+    bool operator<(const Position &other) const {
+        return x < other.x || (x == other.x && y < other.y);
+    }
 };
 
 class Crawler {
@@ -27,6 +31,7 @@ class Crawler {
     int size;
     bool alive;
     std::list<Position> path;
+    int killerId;
 
 public:
     // constructor
@@ -39,6 +44,8 @@ public:
     int getSize() const;
     bool isAlive() const;
     const std::list<Position>& getPath() const;
+    int getKillerId() const;
+    void setKillerId(int id);
 
     // movement methods
     void move();

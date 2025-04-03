@@ -15,6 +15,10 @@ class Board {
     void displayAllBugs() const;
     void tap();
 
+    void displayLifeHistory() const;
+
+    const std::vector<Crawler *> &getCrawlers() const;
+
     const Crawler *findBug(int id) const;
 };
 
