@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iomanip>
 #include <fstream>
+#include <thread>
 
 using namespace std;
 
@@ -82,6 +83,42 @@ int main() {
                 board.displayAllCells();
                 break;
             case 7:
+                int tapCount = 0;
+                while (!board.isGameOver()) {
+                    board.tap();
+                    tapCount++;
+                    std::cout << "Tap " << tapCount << " - ";
+                    board.displayAllBugs();  // Show updated bug states
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+
+                // Find the winner
+                const Crawler* winner = nullptr;
+                for (const Crawler* c : board.getCrawlers()) {
+                    if (c->isAlive()) {
+                        winner = c;
+                        break;
+                    }
+                }
+
+                // Write simulation results
+                auto now = std::chrono::system_clock::now();
+                std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+                std::ostringstream oss;
+                oss << "simulation_results_" << std::put_time(std::localtime(&now_time), "%Y%m%d_%H%M%S") << ".out";
+
+                std::ofstream outFile(oss.str());
+                if (outFile) {
+                    outFile << "Final Results:\n";
+                    if (winner) {
+                        outFile << "Winner: Crawler " << winner->getId()
+                                << " (Size: " << winner->getSize() << ")\n";
+                    } else {
+                        outFile << "All bugs died!\n";
+                    }
+                    outFile << "\nLife History:\n";
+                    board.displayLifeHistory(outFile);
+                }
                 break;
             default:
                 cout << "Invalid Choice" << endl;

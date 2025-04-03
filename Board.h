@@ -2,6 +2,7 @@
 #define BOARD_H
 
 #include <vector>
+#include <iostream>
 #include "Crawler.h"
 
 class Board {
@@ -22,6 +23,10 @@ class Board {
     const Crawler *findBug(int id) const;
 
     void displayAllCells() const;
+
+    bool isGameOver() const;
+
+    void displayLifeHistory(std::ostream& os = std::cout) const;
 };
 
 
