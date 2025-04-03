@@ -20,6 +20,8 @@ class Board {
     const std::vector<Crawler *> &getCrawlers() const;
 
     const Crawler *findBug(int id) const;
+
+    void displayAllCells() const;
 };
 
 

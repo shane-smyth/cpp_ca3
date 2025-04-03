@@ -134,3 +134,42 @@ void Board::displayLifeHistory() const {
 }
 
 const std::vector<Crawler*>& Board::getCrawlers() const { return crawlers; }
+
+void Board::displayAllCells() const {
+    std::map<Position, std::vector<const Crawler *> > cellMap;
+
+    // Populate the map with alive bugs' positions
+    for (const Crawler *crawler: crawlers) {
+        if (crawler->isAlive()) {
+            Position pos = crawler->getPosition();
+            cellMap[pos].push_back(crawler);
+        }
+    }
+
+    // Iterate through all cells (0,0) to (9,9) in row-major order
+    for (int x = 0; x < 10; ++x) {
+        for (int y = 0; y < 10; ++y) {
+            Position currentPos{x, y};
+            std::cout << "(" << x << "," << y << "): ";
+
+            auto cellEntry = cellMap.find(currentPos);
+            if (cellEntry == cellMap.end()) {
+                std::cout << "empty";
+            } else {
+                // Sort bugs in the cell by ID
+                std::vector<const Crawler *> bugsInCell = cellEntry->second;
+                std::sort(bugsInCell.begin(), bugsInCell.end(),
+                          [](const Crawler *a, const Crawler *b) { return a->getId() < b->getId(); });
+
+                // List all bugs in the cell
+                bool firstBug = true;
+                for (const Crawler *bug: bugsInCell) {
+                    if (!firstBug) std::cout << ", ";
+                    std::cout << "Crawler " << bug->getId();
+                    firstBug = false;
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+}

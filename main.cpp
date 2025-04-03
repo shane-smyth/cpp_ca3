@@ -79,6 +79,7 @@ int main() {
                 board.displayLifeHistory();
                 break;
             case 6:
+                board.displayAllCells();
                 break;
             case 7:
                 break;
