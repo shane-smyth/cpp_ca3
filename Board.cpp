@@ -5,9 +5,10 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <ctime>
 
 Board::Board() {
-    std::srand(NULL);
+    std::srand(static_cast<unsigned int>(time(nullptr)));
 }
 
 Board::~Board() {
@@ -101,24 +102,57 @@ void Board::tap() {
     }
 
     // Resolve collisions
-    for (auto& entry : positionMap) {
-        auto& bugs = entry.second;
+    for (auto &entry: positionMap) {
+        auto &bugs = entry.second;
         if (bugs.size() > 1) {
+            // Sort by size descending
             std::sort(bugs.begin(), bugs.end(), [](Crawler* a, Crawler* b) {
-                return a->getSize() > b->getSize() || (a->getSize() == b->getSize() && a->getId() < b->getId());
+                return a->getSize() > b->getSize();
             });
-            Crawler* survivor = bugs[0];
-            for (size_t i = 1; i < bugs.size(); ++i) {
-                bugs[i]->setAlive(false);
-                bugs[i]->setKillerId(survivor->getId());
+
+            // Get all bugs with max size
+            int maxSize = bugs[0]->getSize();
+            std::vector<Crawler*> maxSizeBugs;
+            for (auto bug: bugs) {
+                if (bug->getSize() == maxSize) {
+                    maxSizeBugs.push_back(bug);
+                } else {
+                    break;
+                }
+            }
+
+            // Randomly select survivor if multiple max-size bugs
+            Crawler* survivor;
+            if (maxSizeBugs.size() > 1) {
+                int randomIndex = rand() % maxSizeBugs.size();
+                survivor = maxSizeBugs[randomIndex];
+            } else {
+                survivor = maxSizeBugs[0];
+            }
+
+            // Calculate total size to grow
+            int totalEatenSize = 0;
+            for (auto bug: bugs) {
+                if (bug != survivor) {
+                    totalEatenSize += bug->getSize();
+                }
+            }
+
+            // Apply changes
+            survivor->grow(totalEatenSize);
+            for (auto bug: bugs) {
+                if (bug != survivor) {
+                    bug->setAlive(false);
+                    bug->setKillerId(survivor->getId());
+                }
             }
         }
     }
 }
 
-void Board::displayLifeHistory() const {
+void Board::displayLifeHistory(std::ostream& os) const {
     for (const Crawler* crawler : crawlers) {
-        std::cout << crawler->getId() << " Crawler Path: ";
+        os << crawler->getId() << " Crawler Path: ";
         const auto& path = crawler->getPath();
         bool first = true;
         for (const auto& pos : path) {
@@ -172,4 +206,14 @@ void Board::displayAllCells() const {
             std::cout << std::endl;
         }
     }
+}
+
+bool Board::isGameOver() const {
+    int aliveCount = 0;
+    for (const Crawler* crawler : crawlers) {
+        if (crawler->isAlive() && ++aliveCount > 1) {
+            return false;
+        }
+    }
+    return true;
 }
