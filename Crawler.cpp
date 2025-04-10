@@ -3,28 +3,11 @@
 
 // constructor
 Crawler::Crawler(int id, int x, int y, Direction direction, int size)
-    : id(id), position{x, y}, direction(direction), size(size), alive(true), killerId(-1) {
-    path.push_back(position);
+    : Bug( id,  x,  y,  direction,  size){
+
 }
 
 // getters
-int Crawler::getId() const { return id; }
-Position Crawler::getPosition() const { return position; }
-Direction Crawler::getDirection() const { return direction; }
-int Crawler::getSize() const { return size; }
-bool Crawler::isAlive() const { return alive; }
-const std::list<Position> &Crawler::getPath() const { return path; }
-
-bool Crawler::isWayBlocked() const {
-    switch (direction) {
-        case Direction::NORTH: return position.y == 0;
-        case Direction::EAST: return position.x == 9;
-        case Direction::SOUTH: return position.y == 9;
-        case Direction::WEST: return position.x == 0;
-        default: return false;
-    }
-}
-
 void Crawler::move() {
     if (!alive) return;
 
@@ -58,7 +41,3 @@ void Crawler::move() {
 }
 
 
-void Crawler::setAlive(bool alive) { this->alive = alive; }
-void Crawler::grow(int amount) { size += amount; }
-int Crawler::getKillerId() const { return killerId; }
-void Crawler::setKillerId(int id) { killerId = id; }

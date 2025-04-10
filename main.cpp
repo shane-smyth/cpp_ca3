@@ -82,7 +82,7 @@ int main() {
             case 6:
                 board.displayAllCells();
                 break;
-            case 7:
+            case 7: {
                 int tapCount = 0;
                 while (!board.isGameOver()) {
                     board.tap();
@@ -119,6 +119,7 @@ int main() {
                     outFile << "\nLife History:\n";
                     board.displayLifeHistory(outFile);
                 }
+            }
                 break;
             default:
                 cout << "Invalid Choice" << endl;

@@ -16,7 +16,6 @@ class Board {
     void displayAllBugs() const;
     void tap();
 
-    void displayLifeHistory() const;
 
     const std::vector<Crawler *> &getCrawlers() const;
 
@@ -26,7 +25,7 @@ class Board {
 
     bool isGameOver() const;
 
-    void displayLifeHistory(std::ostream& os = std::cout) const;
+    void displayLifeHistory(std::ostream& os=std::cout) const;
 };
 
 
