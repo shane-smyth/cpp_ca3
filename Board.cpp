@@ -1,5 +1,6 @@
 #include "Board.h"
-
+#include "Crawler.h"
+#include "Hopper.h"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -11,12 +12,6 @@ Board::Board() {
     std::srand(static_cast<unsigned int>(time(nullptr)));
 }
 
-Board::~Board() {
-    for (Crawler *crawler: crawlers) {
-        delete crawler;
-    }
-    crawlers.clear();
-}
 
 void Board::loadFromFile(const std::string &fileName) {
     std::ifstream fin(fileName);
@@ -27,9 +22,13 @@ void Board::loadFromFile(const std::string &fileName) {
             if (line.length() > 0) {
                 std::stringstream ss(line);
                 char type, comma;
-                int id, x, y, dir, size;
+                int id, x, y, dir, size, hopLength = 0;
 
                 ss >> type >> comma >> id >> comma >> x >> comma >> y >> comma >> dir >> comma >> size;
+
+                if (type == 'h') {
+                    ss >> comma >> hopLength;
+                }
 
                 Direction direction;
                 switch (dir) {
@@ -46,7 +45,19 @@ void Board::loadFromFile(const std::string &fileName) {
                         continue;
                 }
 
-                crawlers.push_back(new Crawler(id, x, y, direction, size));
+                switch (type) {
+                    case 'c':
+                        bugs.emplace_back(std::make_unique<Crawler>(id, x, y, direction, size));
+                    break;
+                    case 'h':
+                        if (hopLength < 2 || hopLength > 4) {
+                            hopLength = 2;
+                        }
+                    bugs.emplace_back(std::make_unique<Hopper>(id, x, y, direction, size, hopLength));
+                    break;
+                    default:
+                        std::cerr << "Unknown bug type: " << type << std::endl;
+                }
             }
         }
         fin.close();
@@ -55,128 +66,131 @@ void Board::loadFromFile(const std::string &fileName) {
     }
 }
 
+
 void Board::displayAllBugs() const {
-    for (const Crawler* crawler : crawlers) {
+    for (const auto& bug : bugs) {
         std::string dirStr;
-        switch (crawler->getDirection()) {
+        switch (bug->getDirection()) {
             case Direction::NORTH: dirStr = "North"; break;
             case Direction::EAST:  dirStr = "East";  break;
             case Direction::SOUTH: dirStr = "South"; break;
             case Direction::WEST:  dirStr = "West";  break;
         }
 
-        std::printf("%03d Crawler (%d,%d) %-2d %-5s %s\n",
-            crawler->getId(),
-            crawler->getPosition().x,
-            crawler->getPosition().y,
-            crawler->getSize(),
-            dirStr.c_str(), //https://stackoverflow.com/questions/7163069/c-string-to-enum
-            crawler->isAlive() ? "Alive" : "Dead"
+        std::string typeStr = bug->getType();
+        std::string hopInfo = (typeStr == "Hopper") ?
+            " " + std::to_string(static_cast<const Hopper*>(bug.get())->getHopLength()) : "";
+
+        std::printf("%03d %-7s (%d,%d) %-2d %-5s%s %s\n",
+            bug->getId(),
+            typeStr.c_str(), //https://stackoverflow.com/questions/7163069/c-string-to-enum
+            bug->getPosition().x,
+            bug->getPosition().y,
+            bug->getSize(),
+            dirStr.c_str(),
+            hopInfo.c_str(),
+            bug->isAlive() ? "Alive" : "Dead"
         );
     }
 }
 
-const Crawler *Board::findBug(int id) const {
-    for (const Crawler* crawler : crawlers) {
-        if (crawler->getId() == id) {
-            return crawler;
+
+const Bug *Board::findBug(int id) const {
+    for (const auto& bug : bugs) {
+        if (bug->getId() == id) {
+            return bug.get();
         }
     }
     return nullptr;
 }
 
+
 void Board::tap() {
     // Move all alive bugs
-    for (Crawler* crawler : crawlers) {
-        if (crawler->isAlive()) {
-            crawler->move();
+    for (const auto& bug : bugs) {
+        if (bug->isAlive()) {
+            bug->move();
         }
     }
 
     // Check for collisions
-    std::map<Position, std::vector<Crawler*>> positionMap;
-    for (Crawler* crawler : crawlers) {
-        if (crawler->isAlive()) {
-            positionMap[crawler->getPosition()].push_back(crawler);
+    std::map<Position, std::vector<Bug*>> positionMap;
+    for (const auto& bug : bugs) {
+        if (bug->isAlive()) {
+            positionMap[bug->getPosition()].push_back(bug.get());
         }
     }
 
     // Resolve collisions
-    for (auto &entry: positionMap) {
-        auto &bugs = entry.second;
-        if (bugs.size() > 1) {
-            // Sort by size descending
-            std::sort(bugs.begin(), bugs.end(), [](Crawler* a, Crawler* b) {
-                return a->getSize() > b->getSize();
-            });
+    for (auto& [pos, bugsAtPos] : positionMap) {
+        if (bugsAtPos.size() <= 1) continue;
 
-            // Get all bugs with max size
-            int maxSize = bugs[0]->getSize();
-            std::vector<Crawler*> maxSizeBugs;
-            for (auto bug: bugs) {
-                if (bug->getSize() == maxSize) {
-                    maxSizeBugs.push_back(bug);
-                } else {
-                    break;
-                }
+        // Sort by size descending
+        std::sort(bugsAtPos.begin(), bugsAtPos.end(), [](Bug* a, Bug* b) {
+            return a->getSize() > b->getSize();
+        });
+
+        // Get all bugs with max size
+        int maxSize = bugsAtPos[0]->getSize();
+        auto firstNonMax = std::find_if(bugsAtPos.begin(), bugsAtPos.end(),
+                                        [maxSize](Bug *b) { return b->getSize() < maxSize; });
+
+        // Randomly select survivor if multiple max-size bugs
+        Bug* survivor;
+        if (std::distance(bugsAtPos.begin(), firstNonMax) > 1) {
+            survivor = bugsAtPos[rand() % std::distance(bugsAtPos.begin(), firstNonMax)];
+        } else {
+            survivor = bugsAtPos[0];
+        }
+
+        // Calculate total size to grow
+        int totalEatenSize = 0;
+        for (Bug* bug : bugsAtPos) {
+            if (bug != survivor) {
+                totalEatenSize += bug->getSize();
             }
+        }
 
-            // Randomly select survivor if multiple max-size bugs
-            Crawler* survivor;
-            if (maxSizeBugs.size() > 1) {
-                int randomIndex = rand() % maxSizeBugs.size();
-                survivor = maxSizeBugs[randomIndex];
-            } else {
-                survivor = maxSizeBugs[0];
-            }
-
-            // Calculate total size to grow
-            int totalEatenSize = 0;
-            for (auto bug: bugs) {
-                if (bug != survivor) {
-                    totalEatenSize += bug->getSize();
-                }
-            }
-
-            // Apply changes
-            survivor->grow(totalEatenSize);
-            for (auto bug: bugs) {
-                if (bug != survivor) {
-                    bug->setAlive(false);
-                    bug->setKillerId(survivor->getId());
-                }
+        // Apply changes
+        survivor->grow(totalEatenSize);
+        for (Bug* bug : bugsAtPos) {
+            if (bug != survivor) {
+                bug->setAlive(false);
+                bug->setKillerId(survivor->getId());
             }
         }
     }
 }
 
+
 void Board::displayLifeHistory(std::ostream& os) const {
-    for (const Crawler* crawler : crawlers) {
-        os << crawler->getId() << " Crawler Path: ";
-        const auto& path = crawler->getPath();
+    for (const auto& bug : bugs) {
+        os << bug->getId() << " " << bug->getType() << " Path: ";
+        const auto& path = bug->getPath();
+
         bool first = true;
         for (const auto& pos : path) {
             std::cout << (first ? "" : ",") << "(" << pos.x << "," << pos.y << ")";
             first = false;
         }
-        if (!crawler->isAlive()) {
-            int killerId = crawler->getKillerId();
+
+        if (!bug->isAlive()) {
+            int killerId = bug->getKillerId();
             std::cout << (killerId != -1 ? " Eaten by " + std::to_string(killerId) : " Dead");
         }
         std::cout << std::endl;
     }
 }
 
-const std::vector<Crawler*>& Board::getCrawlers() const { return crawlers; }
 
 void Board::displayAllCells() const {
-    std::map<Position, std::vector<const Crawler *> > cellMap;
+    std::map<Position, std::vector<const Bug *> > cellMap;
 
     // Populate the map with alive bugs' positions
-    for (const Crawler *crawler: crawlers) {
-        if (crawler->isAlive()) {
-            Position pos = crawler->getPosition();
-            cellMap[pos].push_back(crawler);
+    for (const auto& bug : bugs) {
+        if (bug->isAlive()) {
+            Position pos = bug->getPosition();
+            cellMap[pos].push_back(bug.get());
         }
     }
 
@@ -191,15 +205,15 @@ void Board::displayAllCells() const {
                 std::cout << "empty";
             } else {
                 // Sort bugs in the cell by ID
-                std::vector<const Crawler *> bugsInCell = cellEntry->second;
+                std::vector<const Bug *> bugsInCell = cellEntry->second;
                 std::sort(bugsInCell.begin(), bugsInCell.end(),
-                          [](const Crawler *a, const Crawler *b) { return a->getId() < b->getId(); });
+                          [](const Bug *a, const Bug *b) { return a->getId() < b->getId(); });
 
                 // List all bugs in the cell
                 bool firstBug = true;
-                for (const Crawler *bug: bugsInCell) {
+                for (const auto *bug: bugsInCell) {
                     if (!firstBug) std::cout << ", ";
-                    std::cout << "Crawler " << bug->getId();
+                    std::cout << bug->getType() << bug->getId();
                     firstBug = false;
                 }
             }
@@ -208,12 +222,24 @@ void Board::displayAllCells() const {
     }
 }
 
+
 bool Board::isGameOver() const {
     int aliveCount = 0;
-    for (const Crawler* crawler : crawlers) {
-        if (crawler->isAlive() && ++aliveCount > 1) {
+    for (const auto& bug : bugs) {
+        if (bug->isAlive() && ++aliveCount > 1) {
             return false;
         }
     }
     return true;
+}
+
+
+std::vector<const Bug *> Board::getBugsAtPosition(const Position &pos) const {
+    std::vector<const Bug *> result;
+    for (const auto &bug: bugs) {
+        if (bug->isAlive() && bug->getPosition() == pos) {
+            result.push_back(bug.get());
+        }
+    }
+    return result;
 }

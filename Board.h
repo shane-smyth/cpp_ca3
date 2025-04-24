@@ -3,29 +3,32 @@
 
 #include <vector>
 #include <iostream>
+#include <memory>
+
 #include "Crawler.h"
 
 class Board {
-    std::vector<Crawler*> crawlers;
+private:
+    std::vector<std::unique_ptr<Bug>> bugs;
 
     public:
     Board();
-    ~Board();
+    ~Board() = default;
 
     void loadFromFile(const std::string& fileName);
     void displayAllBugs() const;
     void tap();
 
 
-    const std::vector<Crawler *> &getCrawlers() const;
-
-    const Crawler *findBug(int id) const;
+    const Bug *findBug(int id) const;
 
     void displayAllCells() const;
 
     bool isGameOver() const;
 
     void displayLifeHistory(std::ostream& os=std::cout) const;
+
+    std::vector<const Bug*> getBugsAtPosition(const Position& pos) const;
 };
 
 
