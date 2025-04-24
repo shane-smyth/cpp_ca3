@@ -20,7 +20,7 @@ public:
 
 
     // other methods
-
+    std::string getType() const override { return "Crawler"; }
 };
 
 

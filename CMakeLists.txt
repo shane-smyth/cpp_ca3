@@ -9,4 +9,7 @@ add_executable(cpp_ca3 main.cpp
         Board.cpp
         Board.h
         Bug.cpp
-        Bug.h)
+        Bug.h
+        Hopper.cpp
+        Hopper.h
+)

@@ -1,6 +1,7 @@
 #ifndef BUG_H
 #define BUG_H
 #include <list>
+#include <string>
 
 enum class Direction {
     NORTH = 1,
@@ -44,6 +45,7 @@ public:
     void setAlive(bool alive);
     void grow(int amount);
     bool isWayBlocked() const;
+    virtual std::string getType() const = 0;
     virtual ~Bug();
 };
 
