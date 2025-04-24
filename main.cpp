@@ -6,6 +6,8 @@
 #include <fstream>
 #include <thread>
 
+#include "Hopper.h"
+
 using namespace std;
 
 void displayMenu() {
@@ -33,7 +35,7 @@ string directionToString(Direction dir) {
 int main() {
     Board board;
     int choice;
-    string fileName = "crawlers.txt";
+    string fileName = "bugs.txt";
 
     do {
         displayMenu();
@@ -54,19 +56,30 @@ int main() {
             case 3: {
                 cout << "Enter bug ID: " << endl;
                 int searchId;
-                cin >> searchId;
-                const Crawler *foundBug = board.findBug(searchId);
+                if (!(cin >> searchId)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Invalid bug ID. Please enter a number.\n";
+                    break;
+                }
+                const Bug *foundBug = board.findBug(searchId); // Changed to Bug*
 
                 if (foundBug) {
                     cout << "\nBug found" << endl;
-                    std::printf("%03d Crawler (%d,%d) %-2d %-5s %s\n",
-                                foundBug->getId(),
-                                foundBug->getPosition().x,
-                                foundBug->getPosition().y,
-                                foundBug->getSize(),
-                                directionToString(foundBug->getDirection()).c_str(), // https://stackoverflow.com/questions/7163069/c-string-to-enum
-                                foundBug->isAlive() ? "Alive" : "Dead"
-                    );
+                    string typeStr = foundBug->getType();
+                    string hopInfo = (typeStr == "Hopper")
+                                         ? " " + to_string(static_cast<const Hopper *>(foundBug)->getHopLength())
+                                         : "";
+
+                    printf("%03d %-7s (%d,%d) %-2d %-5s%s %s\n",
+                           foundBug->getId(),
+                           typeStr.c_str(),
+                           foundBug->getPosition().x,
+                           foundBug->getPosition().y,
+                           foundBug->getSize(),
+                           directionToString(foundBug->getDirection()).c_str(),
+                           hopInfo.c_str(),
+                           foundBug->isAlive() ? "Alive" : "Dead");
                 } else {
                     cout << "Bug " << searchId << " not found" << endl;
                 }
@@ -89,14 +102,14 @@ int main() {
                     tapCount++;
                     std::cout << "Tap " << tapCount << " - ";
                     board.displayAllBugs();  // Show updated bug states
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 }
 
                 // Find the winner
-                const Crawler* winner = nullptr;
-                for (const Crawler* c : board.getCrawlers()) {
-                    if (c->isAlive()) {
-                        winner = c;
+                const Bug* winner = nullptr;
+                for (const auto& bug : board.getBugs()) {
+                    if (bug->isAlive()) {
+                        winner = bug.get();
                         break;
                     }
                 }
@@ -137,16 +150,16 @@ int main() {
 
     std::ofstream outFile(fileName);
     if (outFile) {
-        for (const Crawler* crawler : board.getCrawlers()) {
-            outFile << crawler->getId() << " Crawler Path: ";
-            const auto& path = crawler->getPath();
+        for (const auto& bug : board.getBugs()) {
+            outFile << bug->getId() << " Crawler Path: ";
+            const auto& path = bug->getPath();
             bool first = true;
             for (const auto& pos : path) {
                 outFile << (first ? "" : ",") << "(" << pos.x << "," << pos.y << ")";
                 first = false;
             }
-            if (!crawler->isAlive()) {
-                int killerId = crawler->getKillerId();
+            if (!bug->isAlive()) {
+                int killerId = bug->getKillerId();
                 outFile << (killerId != -1 ? " Eaten by " + std::to_string(killerId) : " Dead");
             }
             outFile << std::endl;

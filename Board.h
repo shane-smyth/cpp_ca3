@@ -19,6 +19,7 @@ private:
     void displayAllBugs() const;
     void tap();
 
+    const std::vector<std::unique_ptr<Bug>>& getBugs() const { return bugs; }
 
     const Bug *findBug(int id) const;
 

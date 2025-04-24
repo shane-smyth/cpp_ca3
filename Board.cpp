@@ -26,7 +26,7 @@ void Board::loadFromFile(const std::string &fileName) {
 
                 ss >> type >> comma >> id >> comma >> x >> comma >> y >> comma >> dir >> comma >> size;
 
-                if (type == 'h') {
+                if (type == 'H') {
                     ss >> comma >> hopLength;
                 }
 
@@ -46,10 +46,10 @@ void Board::loadFromFile(const std::string &fileName) {
                 }
 
                 switch (type) {
-                    case 'c':
+                    case 'C':
                         bugs.emplace_back(std::make_unique<Crawler>(id, x, y, direction, size));
                     break;
-                    case 'h':
+                    case 'H':
                         if (hopLength < 2 || hopLength > 4) {
                             hopLength = 2;
                         }
