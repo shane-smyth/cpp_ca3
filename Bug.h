@@ -48,6 +48,7 @@ public:
     virtual std::string getType() const = 0;
     virtual ~Bug();
 };
+Direction reverseDirection(Direction direction);
 
 
 #endif

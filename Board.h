@@ -10,6 +10,7 @@
 class Board {
 private:
     std::vector<std::unique_ptr<Bug>> bugs;
+    bool initialized = false;
 
     public:
     Board();
@@ -30,6 +31,8 @@ private:
     void displayLifeHistory(std::ostream& os=std::cout) const;
 
     std::vector<const Bug*> getBugsAtPosition(const Position& pos) const;
+
+    bool isInitialized() const { return initialized; }
 };
 
 

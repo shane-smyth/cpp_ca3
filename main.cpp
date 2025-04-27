@@ -7,6 +7,8 @@
 #include <thread>
 
 #include "Hopper.h"
+#include "Mantis.h"
+#include "SFMLBoard.h"
 
 using namespace std;
 
@@ -19,6 +21,7 @@ void displayMenu() {
     cout << "5. Display Life History\n";
     cout << "6. Display All Cells\n";
     cout << "7. Run Simulation\n";
+    cout << "8. Run on SFML\n";
     cout << "0. Exit\n";
 }
 
@@ -35,7 +38,7 @@ string directionToString(Direction dir) {
 int main() {
     Board board;
     int choice;
-    string fileName = "bugs.txt";
+    string fileName = "crawlers.txt";
 
     do {
         displayMenu();
@@ -70,6 +73,9 @@ int main() {
                     string hopInfo = (typeStr == "Hopper")
                                          ? " " + to_string(static_cast<const Hopper *>(foundBug)->getHopLength())
                                          : "";
+                    string flyInfo = (typeStr == "Mantis")
+                                         ? " " + to_string(static_cast<const Mantis *>(foundBug)->getFlyLength())
+                                         : "";
 
                     printf("%03d %-7s (%d,%d) %-2d %-5s%s %s\n",
                            foundBug->getId(),
@@ -101,13 +107,13 @@ int main() {
                     board.tap();
                     tapCount++;
                     std::cout << "Tap " << tapCount << " - ";
-                    board.displayAllBugs();  // Show updated bug states
+                    board.displayAllBugs(); // Show updated bug states
                     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                 }
 
                 // Find the winner
-                const Bug* winner = nullptr;
-                for (const auto& bug : board.getBugs()) {
+                const Bug *winner = nullptr;
+                for (const auto &bug: board.getBugs()) {
                     if (bug->isAlive()) {
                         winner = bug.get();
                         break;
@@ -134,6 +140,16 @@ int main() {
                 }
             }
                 break;
+            case 8: {
+                if (!board.isInitialized()) {
+                    cout << "Board not initialized. Please load a board first." << endl;
+                    break;
+                }
+
+                SFMLBoard sfmlBoard(board);
+                sfmlBoard.run();
+                break;
+            }
             default:
                 cout << "Invalid Choice" << endl;
                 break;
@@ -150,11 +166,11 @@ int main() {
 
     std::ofstream outFile(fileName);
     if (outFile) {
-        for (const auto& bug : board.getBugs()) {
+        for (const auto &bug: board.getBugs()) {
             outFile << bug->getId() << " Crawler Path: ";
-            const auto& path = bug->getPath();
+            const auto &path = bug->getPath();
             bool first = true;
-            for (const auto& pos : path) {
+            for (const auto &pos: path) {
                 outFile << (first ? "" : ",") << "(" << pos.x << "," << pos.y << ")";
                 first = false;
             }

@@ -1,6 +1,7 @@
 #include "Board.h"
 #include "Crawler.h"
 #include "Hopper.h"
+#include "Mantis.h"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -14,6 +15,11 @@ Board::Board() {
 
 
 void Board::loadFromFile(const std::string &fileName) {
+    if (initialized) {
+        std::cout << "Board already initialized" << std::endl;
+        return;
+    }
+
     std::ifstream fin(fileName);
     if (fin) {
         while (!fin.eof()) {
@@ -22,12 +28,16 @@ void Board::loadFromFile(const std::string &fileName) {
             if (line.length() > 0) {
                 std::stringstream ss(line);
                 char type, comma;
-                int id, x, y, dir, size, hopLength = 0;
+                int id, x, y, dir, size, hopLength = 0, flyLength = 0;
 
                 ss >> type >> comma >> id >> comma >> x >> comma >> y >> comma >> dir >> comma >> size;
 
                 if (type == 'H') {
                     ss >> comma >> hopLength;
+                }
+
+                if (type == 'X') {
+                    ss >> comma >> flyLength;
                 }
 
                 Direction direction;
@@ -48,19 +58,26 @@ void Board::loadFromFile(const std::string &fileName) {
                 switch (type) {
                     case 'C':
                         bugs.emplace_back(std::make_unique<Crawler>(id, x, y, direction, size));
-                    break;
+                        break;
                     case 'H':
                         if (hopLength < 2 || hopLength > 4) {
                             hopLength = 2;
                         }
-                    bugs.emplace_back(std::make_unique<Hopper>(id, x, y, direction, size, hopLength));
-                    break;
+                        bugs.emplace_back(std::make_unique<Hopper>(id, x, y, direction, size, hopLength));
+                        break;
+                    case 'X':
+                        if (flyLength < 2 || flyLength > 4) {
+                            flyLength = 2;
+                        }
+                        bugs.emplace_back(std::make_unique<Mantis>(id, x, y, direction, size, flyLength));
+                        break;
                     default:
                         std::cerr << "Unknown bug type: " << type << std::endl;
                 }
             }
         }
         fin.close();
+        initialized = true;
     } else {
         std::cerr << "Could not open file " << fileName << std::endl;
     }
@@ -68,35 +85,43 @@ void Board::loadFromFile(const std::string &fileName) {
 
 
 void Board::displayAllBugs() const {
-    for (const auto& bug : bugs) {
+    for (const auto &bug: bugs) {
         std::string dirStr;
         switch (bug->getDirection()) {
-            case Direction::NORTH: dirStr = "North"; break;
-            case Direction::EAST:  dirStr = "East";  break;
-            case Direction::SOUTH: dirStr = "South"; break;
-            case Direction::WEST:  dirStr = "West";  break;
+            case Direction::NORTH: dirStr = "North";
+                break;
+            case Direction::EAST: dirStr = "East";
+                break;
+            case Direction::SOUTH: dirStr = "South";
+                break;
+            case Direction::WEST: dirStr = "West";
+                break;
         }
 
         std::string typeStr = bug->getType();
-        std::string hopInfo = (typeStr == "Hopper") ?
-            " " + std::to_string(static_cast<const Hopper*>(bug.get())->getHopLength()) : "";
+        std::string hopInfo = (typeStr == "Hopper")
+                                  ? " " + std::to_string(static_cast<const Hopper *>(bug.get())->getHopLength())
+                                  : "";
+        std::string flyInfo = (typeStr == "Mantis")
+                                  ? " " + std::to_string(static_cast<const Mantis *>(bug.get())->getFlyLength())
+                                  : "";
 
         std::printf("%03d %-7s (%d,%d) %-2d %-5s%s %s\n",
-            bug->getId(),
-            typeStr.c_str(), //https://stackoverflow.com/questions/7163069/c-string-to-enum
-            bug->getPosition().x,
-            bug->getPosition().y,
-            bug->getSize(),
-            dirStr.c_str(),
-            hopInfo.c_str(),
-            bug->isAlive() ? "Alive" : "Dead"
+                    bug->getId(),
+                    typeStr.c_str(), //https://stackoverflow.com/questions/7163069/c-string-to-enum
+                    bug->getPosition().x,
+                    bug->getPosition().y,
+                    bug->getSize(),
+                    dirStr.c_str(),
+                    hopInfo.c_str(),
+                    bug->isAlive() ? "Alive" : "Dead"
         );
     }
 }
 
 
 const Bug *Board::findBug(int id) const {
-    for (const auto& bug : bugs) {
+    for (const auto &bug: bugs) {
         if (bug->getId() == id) {
             return bug.get();
         }
@@ -107,26 +132,29 @@ const Bug *Board::findBug(int id) const {
 
 void Board::tap() {
     // Move all alive bugs
-    for (const auto& bug : bugs) {
+    for (const auto &bug: bugs) {
         if (bug->isAlive()) {
             bug->move();
+            std::cout << "Bug " << bug->getId() << " moved to ("
+                      << bug->getPosition().x << ","
+                      << bug->getPosition().y << ")\n";
         }
     }
 
     // Check for collisions
-    std::map<Position, std::vector<Bug*>> positionMap;
-    for (const auto& bug : bugs) {
+    std::map<Position, std::vector<Bug *> > positionMap;
+    for (const auto &bug: bugs) {
         if (bug->isAlive()) {
             positionMap[bug->getPosition()].push_back(bug.get());
         }
     }
 
     // Resolve collisions
-    for (auto& [pos, bugsAtPos] : positionMap) {
+    for (auto &[pos, bugsAtPos]: positionMap) {
         if (bugsAtPos.size() <= 1) continue;
 
         // Sort by size descending
-        std::sort(bugsAtPos.begin(), bugsAtPos.end(), [](Bug* a, Bug* b) {
+        std::sort(bugsAtPos.begin(), bugsAtPos.end(), [](Bug *a, Bug *b) {
             return a->getSize() > b->getSize();
         });
 
@@ -136,7 +164,7 @@ void Board::tap() {
                                         [maxSize](Bug *b) { return b->getSize() < maxSize; });
 
         // Randomly select survivor if multiple max-size bugs
-        Bug* survivor;
+        Bug *survivor;
         if (std::distance(bugsAtPos.begin(), firstNonMax) > 1) {
             survivor = bugsAtPos[rand() % std::distance(bugsAtPos.begin(), firstNonMax)];
         } else {
@@ -145,7 +173,7 @@ void Board::tap() {
 
         // Calculate total size to grow
         int totalEatenSize = 0;
-        for (Bug* bug : bugsAtPos) {
+        for (Bug *bug: bugsAtPos) {
             if (bug != survivor) {
                 totalEatenSize += bug->getSize();
             }
@@ -153,7 +181,7 @@ void Board::tap() {
 
         // Apply changes
         survivor->grow(totalEatenSize);
-        for (Bug* bug : bugsAtPos) {
+        for (Bug *bug: bugsAtPos) {
             if (bug != survivor) {
                 bug->setAlive(false);
                 bug->setKillerId(survivor->getId());
@@ -163,13 +191,13 @@ void Board::tap() {
 }
 
 
-void Board::displayLifeHistory(std::ostream& os) const {
-    for (const auto& bug : bugs) {
+void Board::displayLifeHistory(std::ostream &os) const {
+    for (const auto &bug: bugs) {
         os << bug->getId() << " " << bug->getType() << " Path: ";
-        const auto& path = bug->getPath();
+        const auto &path = bug->getPath();
 
         bool first = true;
-        for (const auto& pos : path) {
+        for (const auto &pos: path) {
             std::cout << (first ? "" : ",") << "(" << pos.x << "," << pos.y << ")";
             first = false;
         }
@@ -187,7 +215,7 @@ void Board::displayAllCells() const {
     std::map<Position, std::vector<const Bug *> > cellMap;
 
     // Populate the map with alive bugs' positions
-    for (const auto& bug : bugs) {
+    for (const auto &bug: bugs) {
         if (bug->isAlive()) {
             Position pos = bug->getPosition();
             cellMap[pos].push_back(bug.get());
@@ -225,7 +253,7 @@ void Board::displayAllCells() const {
 
 bool Board::isGameOver() const {
     int aliveCount = 0;
-    for (const auto& bug : bugs) {
+    for (const auto &bug: bugs) {
         if (bug->isAlive() && ++aliveCount > 1) {
             return false;
         }
