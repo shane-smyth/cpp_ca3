@@ -11,12 +11,9 @@ Hopper::Hopper(int id, int x, int y, Direction direction, int size, int hopLengt
 void Hopper::move() {
     if (!alive) return;
 
+    // Reverse direction if path is blocked
     if (isWayBlocked()) {
-        Direction newDirection;
-        do {
-            newDirection = (Direction) (1 + rand() % 4);
-        } while (newDirection == direction);
-        direction = newDirection;
+        direction = reverseDirection(direction);
     }
 
     switch (direction) {

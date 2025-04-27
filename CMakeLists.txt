@@ -12,4 +12,15 @@ add_executable(cpp_ca3 main.cpp
         Bug.h
         Hopper.cpp
         Hopper.h
+        SFMLBoard.cpp
+        SFMLBoard.h
+        Mantis.cpp
+        Mantis.h
 )
+
+set(SFML_STATIC_LIBRARIES TRUE)
+set(SFML_DIR C:/SFML-2.6.2/lib/cmake/SFML)
+find_package(SFML COMPONENTS system window graphics network REQUIRED)
+
+include_directories(C:/SFML-2.6.2/include)
+target_link_libraries(cpp_ca3 sfml-system sfml-window sfml-graphics)
